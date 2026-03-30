@@ -16,12 +16,17 @@ on:
 env:
   SOLANA_VERSION: "1.18.22"
   ANCHOR_VERSION: "0.30.1"
+  # Rust 1.82 generates v3 Cargo.lock (platform-tools can read).
+  # Rust 1.85 generates v4 Cargo.lock (platform-tools CANNOT read).
+  # We use 1.85 only for anchor-cli install (time crate compat),
+  # then switch to 1.82 for the actual program build.
+  BUILD_RUST_VERSION: "1.82"
   NETWORK: ${{ github.event.inputs.network || 'devnet' }}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -33,9 +38,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/
-          key: rust-stable-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-1.82-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: rust-1.82-
 
-      - name: Install stable Rust
+      - name: Install stable Rust 1.85 (for anchor-cli install only)
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Solana CLI
@@ -43,10 +49,19 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI (needs Rust 1.85 for time crate compat)
         run: |
-          # Use --force without --locked so Cargo selects updated deps (fixes time crate / Rust 1.85 compat)
+          # --force without --locked lets Cargo select updated deps (fixes time crate / Rust 1.85)
           cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }} --force
+
+      - name: Install Rust ${{ env.BUILD_RUST_VERSION }} for program build
+        run: |
+          # Rust 1.82 generates v3 Cargo.lock which platform-tools Cargo can read.
+          # All edition2024 deps are pinned in Cargo.toml so 1.82 can parse the dep tree.
+          rustup toolchain install ${{ env.BUILD_RUST_VERSION }} --profile minimal
+          rustup default ${{ env.BUILD_RUST_VERSION }}
+          cargo --version
+          echo "Active Rust: $(rustc --version)"
 
       - name: Setup deployer wallet
         env:
@@ -65,30 +80,17 @@ jobs:
           sleep 5
           echo "Balance after airdrop: $(solana balance)"
 
-      - name: Scan for edition2024 packages (diagnostic)
-        run: |
-          echo "=== edition2024 dep scan (causes v4 lockfile if any found) ==="
-          EDITION24=$(cargo metadata --format-version 1 \
-            --manifest-path programs/neet-pad/Cargo.toml 2>/dev/null \
-            | jq -r '.packages[] | select(.edition == "2024") | "  \(.name) \(.version)"')
-          if [ -n "$EDITION24" ]; then
-            echo "WARNING: edition2024 packages (platform-tools cannot read resulting v4 lockfile):"
-            echo "$EDITION24"
-          else
-            echo "OK: no edition2024 packages found - lockfile will be v3"
-          fi
-          rm -f Cargo.lock
-
       - name: Build program (generate keypair + sync IDs)
         run: |
-          # Generate program keypair if absent (avoids the two-pass anchor build)
+          # Generate program keypair if absent
           mkdir -p target/deploy
           if [ ! -f target/deploy/neet_pad-keypair.json ]; then
             solana-keygen new --no-bip39-passphrase -o target/deploy/neet_pad-keypair.json
           fi
           # Sync declare_id! in source and Anchor.toml to match keypair
           anchor keys sync
-          # Single clean build with correct program ID
+          # Build with Rust 1.82 (generates v3 lockfile → platform-tools can read it)
+          # If this fails with "feature edition2024 is required", that crate needs pinning
           anchor build
 
       - name: Get program ID
