@@ -68,10 +68,6 @@ jobs:
 
       - name: Build program (generate keypair + sync IDs)
         run: |
-          # Pin toml_datetime to 1.0.1 (edition2021) to avoid edition2024 incompatibility with Rust 1.79
-          # toml_datetime 1.1.0 uses edition2024 which Cargo 1.79 cannot parse
-          cargo update -p toml_datetime --precise 1.0.1
-
           # First pass: generates target/deploy/neet_pad-keypair.json
           # Anchor 0.30 may error on ID mismatch – that's expected on first run
           anchor build 2>&1 || true
