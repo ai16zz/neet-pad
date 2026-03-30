@@ -6,7 +6,9 @@ node_modules/
 test-ledger/
 *.log
 
-# Never commit wallet keys
-*.json
-!Anchor.toml
+# Never commit wallet keys (raw keypair arrays)
+# Allow package.json, tsconfig.json, etc.
+!package.json
+!package-lock.json
+!tsconfig.json
 !frontend/src/idl/*.json
