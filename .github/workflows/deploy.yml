@@ -35,20 +35,22 @@ jobs:
             target/
           key: rust-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust (pinned for Anchor compatibility)
+        uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: "1.79.0"
 
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI via avm
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor \
-            --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
+          cargo install --version 0.3.0 avm --locked --force
+          avm install ${{ env.ANCHOR_VERSION }}
+          avm use ${{ env.ANCHOR_VERSION }}
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Setup deployer wallet
         env:
