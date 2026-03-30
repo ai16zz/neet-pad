@@ -66,20 +66,21 @@ jobs:
           sleep 5
           echo "Balance after airdrop: $(solana balance)"
 
-      - name: Build program
-        run: anchor build
+      - name: Build program (generate keypair + sync IDs)
+        run: |
+          # First pass: generates target/deploy/neet_pad-keypair.json
+          # Anchor 0.30 may error on ID mismatch – that's expected on first run
+          anchor build 2>&1 || true
+          # Sync declare_id! in source to match generated keypair
+          anchor keys sync
+          # Second pass: clean build with correct program ID
+          anchor build
 
       - name: Get program ID
         run: |
           PROG_ID=$(solana-keygen pubkey target/deploy/neet_pad-keypair.json)
           echo "PROGRAM_ID=$PROG_ID" >> $GITHUB_ENV
           echo "Program ID: $PROG_ID"
-
-      - name: Update declare_id! in source
-        run: |
-          sed -i "s/NeetPad1111111111111111111111111111111111111/${{ env.PROGRAM_ID }}/g" \
-            programs/neet-pad/src/lib.rs Anchor.toml
-          anchor build   # rebuild with correct program ID
 
       - name: Deploy to ${{ env.NETWORK }}
         run: |
