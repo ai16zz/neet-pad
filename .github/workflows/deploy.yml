@@ -77,7 +77,7 @@ jobs:
 
       - name: Update declare_id! in source
         run: |
-          sed -i "s/NEETPadXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/${{ env.PROGRAM_ID }}/g" \
+          sed -i "s/NeetPad1111111111111111111111111111111111111/${{ env.PROGRAM_ID }}/g" \
             programs/neet-pad/src/lib.rs Anchor.toml
           anchor build   # rebuild with correct program ID
 

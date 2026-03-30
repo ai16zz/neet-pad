@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, MintTo, Transfer};
 use anchor_spl::associated_token::AssociatedToken;
 
-declare_id!("NEETPadXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"); // replaced after deploy
+declare_id!("NeetPad1111111111111111111111111111111111111"); // replaced after deploy
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TRADING_FEE_BPS: u64 = 50;          // 0.50 %
@@ -335,8 +335,8 @@ pub struct CreateToken<'info> {
     )]
     pub curve_sol_vault: UncheckedAccount<'info>,
 
-    #[account(mut)]
     /// CHECK: treasury wallet address stored in platform_state
+    #[account(mut)]
     pub treasury: UncheckedAccount<'info>,
 
     #[account(mut)]
