@@ -33,12 +33,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/
-          key: rust-${{ hashFiles('**/Cargo.lock') }}
+          key: rust-stable-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Rust 1.79 (required to compile anchor-cli 0.30.1)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.79.0"
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install Solana CLI
         run: |
@@ -47,7 +45,8 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }} --locked --force
+          # Use --force without --locked so Cargo selects updated deps (fixes time crate / Rust 1.85 compat)
+          cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }} --force
 
       - name: Setup deployer wallet
         env:
@@ -73,6 +72,8 @@ jobs:
           anchor build 2>&1 || true
           # Sync declare_id! in source to match generated keypair
           anchor keys sync
+          # Remove any Cargo.lock generated during first pass to avoid v4 format conflicts
+          rm -f Cargo.lock
           # Second pass: clean build with correct program ID
           anchor build
 
