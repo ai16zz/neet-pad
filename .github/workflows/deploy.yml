@@ -35,7 +35,7 @@ jobs:
             target/
           key: rust-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Rust (pinned for Anchor compatibility)
+      - name: Install Rust 1.79 (required to compile anchor-cli 0.30.1)
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.79.0"
@@ -48,6 +48,12 @@ jobs:
       - name: Install Anchor CLI
         run: |
           cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }} --locked --force
+
+      - name: Switch to stable Rust for anchor build
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustc --version && cargo --version
 
       - name: Setup deployer wallet
         env:
