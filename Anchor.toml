@@ -6,10 +6,10 @@ resolution = true
 skip-lint  = false
 
 [programs.devnet]
-neet-pad = "NeetPad1111111111111111111111111111111111111"
+neet-pad = "5w6esZD8WLkj6PfUgeyB2j1RWP6RGNpNkcYY9R3dwWyY"
 
 [programs.mainnet]
-neet-pad = "NeetPad1111111111111111111111111111111111111"
+neet-pad = "5w6esZD8WLkj6PfUgeyB2j1RWP6RGNpNkcYY9R3dwWyY"
 
 [registry]
 url = "https://api.apr.dev"
