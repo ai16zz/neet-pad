@@ -1,0 +1,12 @@
+.anchor/
+.DS_Store
+target/
+**/*.rs.bak
+node_modules/
+test-ledger/
+*.log
+
+# Never commit wallet keys
+*.json
+!Anchor.toml
+!frontend/src/idl/*.json
