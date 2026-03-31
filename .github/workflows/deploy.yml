@@ -64,8 +64,11 @@ jobs:
       - name: Airdrop SOL on devnet (if needed)
         if: env.NETWORK == 'devnet'
         run: |
-          solana airdrop 2 || true
-          sleep 5
+          echo "Balance before airdrop: $(solana balance)"
+          for i in 1 2 3 4; do
+            solana airdrop 2 || true
+            sleep 8
+          done
           echo "Balance after airdrop: $(solana balance)"
 
       - name: Build program
@@ -112,7 +115,8 @@ jobs:
 
       - name: Deploy to ${{ env.NETWORK }}
         run: |
-          anchor deploy --provider.cluster ${{ env.NETWORK }}
+          anchor deploy --provider.cluster ${{ env.NETWORK }} \
+            --program-keypair target/deploy/neet_pad-keypair.json
           echo "Deployed: ${{ env.PROGRAM_ID }} on ${{ env.NETWORK }}"
 
       - name: Save IDL & Program ID
