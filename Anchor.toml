@@ -6,10 +6,10 @@ resolution = true
 skip-lint  = false
 
 [programs.devnet]
-neet-pad = "5w6esZD8WLkj6PfUgeyB2j1RWP6RGNpNkcYY9R3dwWyY"
+neet-pad = "FAL3eAhkTv4twLCht4UFwSVdKtBp4Tg17yGwJFfjVfpp"
 
 [programs.mainnet]
-neet-pad = "5w6esZD8WLkj6PfUgeyB2j1RWP6RGNpNkcYY9R3dwWyY"
+neet-pad = "FAL3eAhkTv4twLCht4UFwSVdKtBp4Tg17yGwJFfjVfpp"
 
 [registry]
 url = "https://api.apr.dev"

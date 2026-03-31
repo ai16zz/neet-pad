@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, MintTo, Transfer};
 use anchor_spl::associated_token::AssociatedToken;
 
-declare_id!("5w6esZD8WLkj6PfUgeyB2j1RWP6RGNpNkcYY9R3dwWyY"); // replaced after deploy
+declare_id!("FAL3eAhkTv4twLCht4UFwSVdKtBp4Tg17yGwJFfjVfpp");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TRADING_FEE_BPS: u64 = 50;          // 0.50 %

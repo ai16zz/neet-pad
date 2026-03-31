@@ -56,30 +56,29 @@ jobs:
           DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}
         run: |
           mkdir -p ~/.config/solana
-          if [ "${{ env.NETWORK }}" = "devnet" ]; then
-            # Fresh wallet each devnet run → guaranteed clean airdrop quota
-            solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
-          else
-            echo "$DEPLOY_KEYPAIR" > ~/.config/solana/id.json
-          fi
+          echo "$DEPLOY_KEYPAIR" > ~/.config/solana/id.json
           solana config set --url ${{ env.NETWORK }}
           echo "Deployer: $(solana address)"
           echo "Balance:  $(solana balance)"
 
-      - name: Airdrop SOL on devnet (if needed)
+      - name: Airdrop SOL on devnet (best-effort)
         if: env.NETWORK == 'devnet'
         run: |
-          # Fresh wallet → no rate-limit history; request 5 SOL at once
-          solana airdrop 5 || solana airdrop 2 || true
-          sleep 5
-          echo "Balance after airdrop: $(solana balance)"
+          # Pre-funded wallet — airdrop is best-effort only; won't fail the job
+          solana airdrop 2 || true
+          sleep 3
+          echo "Balance after airdrop attempt: $(solana balance)"
+
+      - name: Setup program keypair
+        env:
+          PROGRAM_KEYPAIR: ${{ secrets.PROGRAM_KEYPAIR }}
+        run: |
+          mkdir -p target/deploy
+          echo "$PROGRAM_KEYPAIR" > target/deploy/neet_pad-keypair.json
+          echo "Program ID: $(solana-keygen pubkey target/deploy/neet_pad-keypair.json)"
 
       - name: Build program
         run: |
-          mkdir -p target/deploy
-          if [ ! -f target/deploy/neet_pad-keypair.json ]; then
-            solana-keygen new --no-bip39-passphrase -o target/deploy/neet_pad-keypair.json
-          fi
           anchor keys sync
           # Generate lockfile with system Cargo 1.85
           cargo generate-lockfile
