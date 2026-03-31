@@ -83,13 +83,16 @@ jobs:
           # platform-tools Cargo 1.75 (used by cargo-build-sbf) can parse them.
           mkdir -p .cargo vendor
           cargo vendor --locked vendor > .cargo/config.toml
+          # Patch edition2024 → edition2021 (platform-tools Cargo 1.75 can't parse edition2024)
           PATCHED=$(find vendor -name "Cargo.toml" -exec grep -l 'edition = "2024"' {} \;)
           if [ -n "$PATCHED" ]; then
             echo "$PATCHED" | xargs sed -i 's/edition = "2024"/edition = "2021"/'
-            echo "Patched edition2024 in: $PATCHED"
-          else
-            echo "No edition2024 manifests found in vendor/"
+            echo "Patched edition2024 in: $(echo "$PATCHED" | wc -l) files"
           fi
+          # Strip rust-version constraints: platform-tools Cargo 1.75 rejects packages
+          # whose rust-version MSRV exceeds 1.75 (e.g. cmov v0.5.2 requires rustc 1.85)
+          find vendor -name "Cargo.toml" | xargs sed -i '/^rust-version/d'
+          echo "Stripped rust-version constraints from vendor/"
           anchor build
 
       - name: Get program ID
