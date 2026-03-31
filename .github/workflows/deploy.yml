@@ -72,16 +72,15 @@ jobs:
             solana-keygen new --no-bip39-passphrase -o target/deploy/neet_pad-keypair.json
           fi
           anchor keys sync
-          cargo fetch --manifest-path programs/neet-pad/Cargo.toml
+          # Generate lockfile with Cargo 1.85 (handles all edition2024 deps)
           cargo generate-lockfile
-          echo "Generated lockfile: $(head -2 Cargo.lock | grep version)"
+          # Patch v4 → v3: platform-tools Cargo can't read v4 but can read v3.
+          # Cargo 1.85 only rewrites the lockfile if resolution changes;
+          # since we just generated it, the resolution matches and v3 is preserved.
           sed -i 's/^version = 4$/version = 3/' Cargo.lock
           sed -i '/^\[metadata\]/,$d' Cargo.lock
-          echo "Patched lockfile:   $(head -2 Cargo.lock | grep version)"
-          mkdir -p .cargo
-          printf '[net]\noffline = true\n' > .cargo/config.toml
+          echo "Lockfile after patch: $(grep '^version' Cargo.lock | head -1)"
           anchor build
-          rm -f .cargo/config.toml
 
       - name: Get program ID
         run: |
