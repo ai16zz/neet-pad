@@ -56,7 +56,12 @@ jobs:
           DEPLOY_KEYPAIR: ${{ secrets.DEPLOY_KEYPAIR }}
         run: |
           mkdir -p ~/.config/solana
-          echo "$DEPLOY_KEYPAIR" > ~/.config/solana/id.json
+          if [ "${{ env.NETWORK }}" = "devnet" ]; then
+            # Fresh wallet each devnet run → guaranteed clean airdrop quota
+            solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+          else
+            echo "$DEPLOY_KEYPAIR" > ~/.config/solana/id.json
+          fi
           solana config set --url ${{ env.NETWORK }}
           echo "Deployer: $(solana address)"
           echo "Balance:  $(solana balance)"
@@ -64,11 +69,9 @@ jobs:
       - name: Airdrop SOL on devnet (if needed)
         if: env.NETWORK == 'devnet'
         run: |
-          echo "Balance before airdrop: $(solana balance)"
-          for i in 1 2 3 4; do
-            solana airdrop 2 || true
-            sleep 8
-          done
+          # Fresh wallet → no rate-limit history; request 5 SOL at once
+          solana airdrop 5 || solana airdrop 2 || true
+          sleep 5
           echo "Balance after airdrop: $(solana balance)"
 
       - name: Build program
