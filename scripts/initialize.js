@@ -53,7 +53,8 @@ async function main() {
   anchor.setProvider(provider);
 
   const programId = new PublicKey(PROGRAM_ID);
-  const program   = new anchor.Program(idl, programId, provider);
+  // Anchor 0.32: programId is taken from idl.address; constructor is (idl, provider)
+  const program   = new anchor.Program(idl, provider);
 
   // Derive platform state PDA
   const [platformState, bump] = await PublicKey.findProgramAddress(

@@ -125,6 +125,15 @@ jobs:
             --provider.cluster ${{ env.NETWORK }}
           echo "Deployed: ${{ env.PROGRAM_ID }} on ${{ env.NETWORK }}"
 
+      - name: Initialize platform (idempotent)
+        run: |
+          npm install --production
+          ANCHOR_WALLET=~/.config/solana/id.json \
+          PROGRAM_ID=${{ env.PROGRAM_ID }} \
+          TREASURY=H8tw1MkTKiqotp1hvR4Xna7Q4jt2t5yAvCru3UbrsJcb \
+          NEET_MINT=8XFueWvQfNcqeaGdbiA94KvRkZQbrqpFrgrxQHMmNEEt \
+          node scripts/initialize.js --cluster ${{ env.NETWORK }} || true
+
       - name: Save IDL & Program ID
         run: |
           mkdir -p frontend/src/idl
