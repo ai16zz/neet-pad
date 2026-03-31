@@ -16,11 +16,6 @@ on:
 env:
   SOLANA_VERSION: "1.18.22"
   ANCHOR_VERSION: "0.30.1"
-  # Rust 1.82 generates v3 Cargo.lock (platform-tools can read).
-  # Rust 1.85 generates v4 Cargo.lock (platform-tools CANNOT read).
-  # We use 1.85 only for anchor-cli install (time crate compat),
-  # then switch to 1.82 for the actual program build.
-  BUILD_RUST_VERSION: "1.82"
   NETWORK: ${{ github.event.inputs.network || 'devnet' }}
 
 jobs:
@@ -38,10 +33,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target/
-          key: rust-1.82-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: rust-1.82-
+          key: rust-stable-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: rust-stable-
 
-      - name: Install stable Rust 1.85 (for anchor-cli install only)
+      - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Solana CLI
@@ -49,19 +44,10 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${{ env.SOLANA_VERSION }}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Install Anchor CLI (needs Rust 1.85 for time crate compat)
+      - name: Install Anchor CLI
         run: |
           # --force without --locked lets Cargo select updated deps (fixes time crate / Rust 1.85)
           cargo install anchor-cli --version ${{ env.ANCHOR_VERSION }} --force
-
-      - name: Install Rust ${{ env.BUILD_RUST_VERSION }} for program build
-        run: |
-          # Rust 1.82 generates v3 Cargo.lock which platform-tools Cargo can read.
-          # All edition2024 deps are pinned in Cargo.toml so 1.82 can parse the dep tree.
-          rustup toolchain install ${{ env.BUILD_RUST_VERSION }} --profile minimal
-          rustup default ${{ env.BUILD_RUST_VERSION }}
-          cargo --version
-          echo "Active Rust: $(rustc --version)"
 
       - name: Setup deployer wallet
         env:
@@ -82,16 +68,48 @@ jobs:
 
       - name: Build program (generate keypair + sync IDs)
         run: |
-          # Generate program keypair if absent
+          # Generate keypair if absent
           mkdir -p target/deploy
           if [ ! -f target/deploy/neet_pad-keypair.json ]; then
             solana-keygen new --no-bip39-passphrase -o target/deploy/neet_pad-keypair.json
           fi
-          # Sync declare_id! in source and Anchor.toml to match keypair
+
+          # Sync declare_id! and Anchor.toml to match keypair
           anchor keys sync
-          # Build with Rust 1.82 (generates v3 lockfile → platform-tools can read it)
-          # If this fails with "feature edition2024 is required", that crate needs pinning
-          anchor build
+
+          # Prefetch all dependencies into local cache
+          cargo fetch --manifest-path programs/neet-pad/Cargo.toml
+
+          # Generate Cargo.lock with stable Cargo 1.85
+          # (handles all edition2024 deps in anchor-lang dep tree)
+          cargo generate-lockfile
+          echo "Generated lockfile: $(head -2 Cargo.lock | grep version)"
+
+          # CRITICAL: patch lockfile v4 → v3
+          # Cargo 1.85 generates v4; Solana platform-tools bundles an older
+          # Cargo that errors with "lock file version 4 requires -Znext-lockfile-bump".
+          # The v4 format only adds checksums in a [metadata] section; stripping
+          # it and changing the version header produces a valid v3 file.
+          if grep -q "^version = 4" Cargo.lock; then
+            echo "Patching Cargo.lock v4 → v3 for platform-tools compatibility"
+            sed -i 's/^version = 4$/version = 3/' Cargo.lock
+            # Remove [metadata] checksum section added by v4 (not valid in v3)
+            python3 -c "
+import re, sys
+with open('Cargo.lock') as f:
+    content = f.read()
+# Remove [metadata] section and everything after it
+content = re.sub(r'\n\[metadata\].*', '', content, flags=re.DOTALL)
+with open('Cargo.lock', 'w') as f:
+    f.write(content)
+print('Removed [metadata] section from Cargo.lock')
+"
+          fi
+          echo "Final lockfile: $(head -2 Cargo.lock | grep version)"
+
+          # Build using the pre-fetched cache; offline prevents Cargo from
+          # re-resolving and re-writing the lockfile in v4 format
+          CARGO_NET_OFFLINE=true anchor build
 
       - name: Get program ID
         run: |
