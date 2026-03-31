@@ -14,8 +14,8 @@ on:
         options: [devnet, mainnet-beta]
 
 env:
-  SOLANA_VERSION: "1.18.22"
-  ANCHOR_VERSION: "0.30.1"
+  SOLANA_VERSION: "2.2.17"
+  ANCHOR_VERSION: "0.32.1"
   NETWORK: ${{ github.event.inputs.network || 'devnet' }}
 
 jobs:
@@ -72,29 +72,25 @@ jobs:
             solana-keygen new --no-bip39-passphrase -o target/deploy/neet_pad-keypair.json
           fi
           anchor keys sync
-          # Generate lockfile with Cargo 1.85 (handles all edition2024 deps)
+          # Generate lockfile with system Cargo 1.85
           cargo generate-lockfile
-          # Patch v4 → v3: platform-tools Cargo 1.75 can't read v4 lockfiles
+          # Patch v4 → v3 in case platform-tools Cargo < 1.85 can't read v4
           sed -i 's/^version = 4$/version = 3/' Cargo.lock
           sed -i '/^\[metadata\]/,$d' Cargo.lock
           echo "Lockfile: $(grep '^version' Cargo.lock | head -1)"
-          # Vendor all deps using system Cargo 1.85 (which handles edition2024 crates)
-          # Then patch edition2024 → edition2021 in vendored Cargo.toml files so that
-          # platform-tools Cargo 1.75 (used by cargo-build-sbf) can parse them.
+          # Vendor deps so we can patch any edition2024 manifests that
+          # platform-tools Cargo (Solana 2.2.x ships ~Rust 1.82) can't parse
           mkdir -p .cargo vendor
           cargo vendor --locked vendor > .cargo/config.toml
-          # Patch edition2024 → edition2021 (platform-tools Cargo 1.75 can't parse edition2024)
+          # Patch edition2024 → edition2021
           PATCHED=$(find vendor -name "Cargo.toml" -exec grep -l 'edition = "2024"' {} \;)
           if [ -n "$PATCHED" ]; then
             echo "$PATCHED" | xargs sed -i 's/edition = "2024"/edition = "2021"/'
-            echo "Patched edition2024 in: $(echo "$PATCHED" | wc -l) files"
+            echo "Patched edition2024 in $(echo "$PATCHED" | wc -l) files"
           fi
-          # Strip rust-version constraints: platform-tools Cargo 1.75 rejects packages
-          # whose rust-version MSRV exceeds 1.75 (e.g. cmov v0.5.2 requires rustc 1.85)
+          # Strip rust-version MSRV lines that exceed what platform-tools Cargo accepts
           find vendor -name "Cargo.toml" | xargs sed -i '/^rust-version/d'
-          echo "Stripped rust-version constraints from vendor/"
-          # Recompute .cargo-checksum.json for every vendored Cargo.toml we modified.
-          # cargo vendor stores a SHA-256 of each file; editing Cargo.toml invalidates it.
+          # Recompute checksums after editing Cargo.toml files
           find vendor -name "Cargo.toml" | while IFS= read -r toml_path; do
             cs_path="$(dirname "$toml_path")/.cargo-checksum.json"
             [ -f "$cs_path" ] || continue

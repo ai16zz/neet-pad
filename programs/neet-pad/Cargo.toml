@@ -16,18 +16,5 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang  = { version = "0.30.1", features = ["init-if-needed"] }
-anchor-spl   = { version = "0.30.1", features = ["token", "associated_token"] }
-
-# Pin TOML-ecosystem crates to edition2021 versions.
-# The 1.1.0/0.25.6+ releases use edition2024 which Cargo 1.79 (bundled in Solana platform-tools) cannot parse.
-# Constraining here forces resolution to skip the edition2024 manifests entirely.
-[dev-dependencies]
-# Pin all known edition2024 packages to their last edition2021 versions.
-# Cargo 1.85 generates v4 Cargo.lock when ANY dep uses edition2024.
-# Solana platform-tools Cargo (< 1.85) cannot read v4 → build fails.
-# Pinning forces v3 Cargo.lock which platform-tools can read.
-toml_datetime    = "=1.0.1"
-toml_parser      = "=1.0.10"
-toml_edit        = "=0.25.5"
-constant_time_eq = "=0.3.1"
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+anchor-spl  = { version = "0.32.1", features = ["token", "associated_token"] }
