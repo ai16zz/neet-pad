@@ -87,11 +87,16 @@ pub mod neet_pad {
         curve.graduated            = false;
         curve.bump                 = ctx.bumps.bonding_curve;
 
+        // Save locals before mutable borrow is used in CPI (avoids E0716 / E0502)
+        let mint_key   = ctx.accounts.mint.key();
+        let curve_bump = curve.bump;
+        // NLL: `curve` last used above; mutable borrow ends here
+
         // Mint full supply to the curve vault
         let seeds: &[&[&[u8]]] = &[&[
             b"bonding_curve",
-            ctx.accounts.mint.key().as_ref(),
-            &[curve.bump],
+            mint_key.as_ref(),
+            &[curve_bump],
         ]];
         token::mint_to(
             CpiContext::new_with_signer(
@@ -139,6 +144,15 @@ pub mod neet_pad {
         require!(tok_out >= min_tokens_out, CustomError::SlippageExceeded);
         require!(tok_out <= curve.real_tok_reserves, CustomError::InsufficientLiquidity);
 
+        // ── update state first; extract snapshot before NLL drops mutable borrow
+        curve.real_sol_reserves += sol_net;
+        curve.real_tok_reserves -= tok_out;
+        let real_sol   = curve.real_sol_reserves;
+        let auto_grad  = real_sol >= GRADUATION_REAL_SOL;
+        if auto_grad { curve.graduated = true; }
+        let curve_bump = curve.bump;
+        // NLL: `curve` last used above → mutable borrow of bonding_curve ends here
+
         // ── transfer SOL in ──────────────────────────────────────────────────
         anchor_lang::system_program::transfer(
             CpiContext::new(
@@ -163,10 +177,11 @@ pub mod neet_pad {
         )?;
 
         // ── transfer tokens out ──────────────────────────────────────────────
+        let mint_key = ctx.accounts.mint.key();
         let seeds: &[&[&[u8]]] = &[&[
             b"bonding_curve",
-            ctx.accounts.mint.key().as_ref(),
-            &[curve.bump],
+            mint_key.as_ref(),
+            &[curve_bump],
         ]];
         token::transfer(
             CpiContext::new_with_signer(
@@ -181,23 +196,17 @@ pub mod neet_pad {
             tok_out,
         )?;
 
-        // ── update state ─────────────────────────────────────────────────────
-        curve.real_sol_reserves += sol_net;
-        curve.real_tok_reserves -= tok_out;
-
         emit!(Trade {
             mint: ctx.accounts.mint.key(),
             user: ctx.accounts.buyer.key(),
             is_buy: true,
             sol_amount: sol_in,
             token_amount: tok_out,
-            real_sol_reserves: curve.real_sol_reserves,
+            real_sol_reserves: real_sol,
         });
 
-        // ── auto-graduate? ───────────────────────────────────────────────────
-        if curve.real_sol_reserves >= GRADUATION_REAL_SOL {
-            curve.graduated = true;
-            emit!(Graduated { mint: ctx.accounts.mint.key(), real_sol: curve.real_sol_reserves });
+        if auto_grad {
+            emit!(Graduated { mint: ctx.accounts.mint.key(), real_sol });
         }
 
         Ok(())
@@ -225,6 +234,12 @@ pub mod neet_pad {
         require!(sol_net >= min_sol_out, CustomError::SlippageExceeded);
         require!(sol_out <= curve.real_sol_reserves, CustomError::InsufficientLiquidity);
 
+        // ── update state ─────────────────────────────────────────────────────
+        curve.real_sol_reserves -= sol_out;
+        curve.real_tok_reserves += tok_in;
+        let real_sol = curve.real_sol_reserves;
+        // NLL: `curve` last used above
+
         // ── transfer tokens in ───────────────────────────────────────────────
         token::transfer(
             CpiContext::new(
@@ -243,17 +258,13 @@ pub mod neet_pad {
         **ctx.accounts.seller.try_borrow_mut_lamports()? += sol_net;
         **ctx.accounts.treasury.try_borrow_mut_lamports()? += fee;
 
-        // ── update state ─────────────────────────────────────────────────────
-        curve.real_sol_reserves -= sol_out;
-        curve.real_tok_reserves += tok_in;
-
         emit!(Trade {
             mint: ctx.accounts.mint.key(),
             user: ctx.accounts.seller.key(),
             is_buy: false,
             sol_amount: sol_net,
             token_amount: tok_in,
-            real_sol_reserves: curve.real_sol_reserves,
+            real_sol_reserves: real_sol,
         });
 
         Ok(())
@@ -264,6 +275,8 @@ pub mod neet_pad {
     pub fn graduate(ctx: Context<Graduate>) -> Result<()> {
         let curve = &mut ctx.accounts.bonding_curve;
         require!(curve.graduated, CustomError::NotReadyToGraduate);
+        let real_sol = curve.real_sol_reserves;
+        // NLL: `curve` last used above
 
         // Collect 1 SOL graduation fee
         **ctx.accounts.curve_sol_vault.try_borrow_mut_lamports()? -= GRADUATION_LAMPORTS;
@@ -271,7 +284,7 @@ pub mod neet_pad {
 
         emit!(Graduated {
             mint: ctx.accounts.mint.key(),
-            real_sol: curve.real_sol_reserves,
+            real_sol,
         });
         Ok(())
     }
