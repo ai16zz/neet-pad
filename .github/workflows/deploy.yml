@@ -115,8 +115,10 @@ jobs:
 
       - name: Deploy to ${{ env.NETWORK }}
         run: |
-          anchor deploy --provider.cluster ${{ env.NETWORK }} \
-            --program-keypair target/deploy/neet_pad-keypair.json
+          anchor deploy \
+            --program-name neet_pad \
+            --program-keypair target/deploy/neet_pad-keypair.json \
+            --provider.cluster ${{ env.NETWORK }}
           echo "Deployed: ${{ env.PROGRAM_ID }} on ${{ env.NETWORK }}"
 
       - name: Save IDL & Program ID
