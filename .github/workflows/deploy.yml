@@ -93,6 +93,16 @@ jobs:
           # whose rust-version MSRV exceeds 1.75 (e.g. cmov v0.5.2 requires rustc 1.85)
           find vendor -name "Cargo.toml" | xargs sed -i '/^rust-version/d'
           echo "Stripped rust-version constraints from vendor/"
+          # Recompute .cargo-checksum.json for every vendored Cargo.toml we modified.
+          # cargo vendor stores a SHA-256 of each file; editing Cargo.toml invalidates it.
+          find vendor -name "Cargo.toml" | while IFS= read -r toml_path; do
+            cs_path="$(dirname "$toml_path")/.cargo-checksum.json"
+            [ -f "$cs_path" ] || continue
+            new_hash=$(sha256sum "$toml_path" | awk '{print $1}')
+            tmp=$(mktemp)
+            jq --arg h "$new_hash" '.files["Cargo.toml"] = $h' "$cs_path" > "$tmp" && mv "$tmp" "$cs_path"
+          done
+          echo "Checksums updated"
           anchor build
 
       - name: Get program ID
