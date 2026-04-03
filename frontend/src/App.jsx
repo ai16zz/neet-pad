@@ -6,7 +6,7 @@ import CreateToken from './pages/CreateToken'
 
 function App() {
   return (
-    <Router>
+    <Router basename="/neet-pad">
       <div className="min-h-screen bg-gray-950 text-white">
         <NavBar />
         <Routes>
