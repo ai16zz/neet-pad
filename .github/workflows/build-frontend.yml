@@ -5,6 +5,8 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/build-frontend.yml'
+permissions:
+  contents: write
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
