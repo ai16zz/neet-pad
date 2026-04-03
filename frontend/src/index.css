@@ -1,3 +1,72 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* { box-sizing: border-box; }
+
+:root {
+  --bg: #050808;
+  --bg2: #0a0f0a;
+  --bg3: #0f1a12;
+  --green: #00ff88;
+  --green-dim: #00cc66;
+  --green-dark: #003322;
+  --red: #ff3344;
+  --text: #ccffdd;
+  --text-dim: #447755;
+  --border: #1a3322;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+input, textarea, select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--green);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+}
+
+input:focus, textarea:focus { outline: none; border-color: var(--green); }
+::selection { background: var(--green); color: var(--bg); }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--green-dark); }
+::-webkit-scrollbar-thumb:hover { background: var(--green); }
+
+.btn-green {
+  background: var(--green);
+  color: var(--bg);
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  padding: 10px 20px;
+  font-size: 12px;
+  display: inline-block;
+  text-decoration: none;
+}
+.btn-green:hover { background: #00ffaa; }
+.btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--border);
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 10px;
+}
+.btn-outline:hover { border-color: var(--green); }
