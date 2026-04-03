@@ -25,7 +25,9 @@ jobs:
           node-version: '20'
 
       - name: Scaffold frontend files
-        run: node scripts/scaffold-frontend.js
+        run: |
+          node scripts/scaffold-frontend.js
+          find frontend/src -name "*.jsx" -exec sed -i 's/element\^{/element={/g' {} \;
 
       - name: Install frontend dependencies
         run: npm install --prefix frontend
